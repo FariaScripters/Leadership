@@ -4,6 +4,9 @@ set -e
 # Give some time for the system to settle
 sleep 5
 
+# List files in the current directory to verify content
+ls -la
+
 # Start Chrome with remote debugging
 google-chrome-stable --remote-debugging-port=9222 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-dev-shm-usage --headless &
 

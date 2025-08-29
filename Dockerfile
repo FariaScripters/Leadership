@@ -1,4 +1,5 @@
 # Use Python 3.12 slim as base image
+# This is a test comment to force a rebuild
 FROM python:3.12-slim
 
 # Set environment variables

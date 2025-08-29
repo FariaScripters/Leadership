@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including Chrome
+# Install system dependencies including Chrome and its dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -31,6 +31,15 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
+    google-chrome-stable \
+    # Additional fonts for Playwright
+    fonts-unifont \
+    fonts-liberation2 \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-tlwg-loma-otf \
+    fonts-freefont-ttf \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and set working directory
@@ -42,17 +51,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers and dependencies
-RUN playwright install chromium && \
-    playwright install-deps chromium || \
-    (apt-get update && apt-get install -y \
-    fonts-unifont \
-    fonts-liberation2 \
-    fonts-ipafont-gothic \
-    fonts-wqy-zenhei \
-    fonts-tlwg-loma-otf \
-    fonts-freefont-ttf \
-    --no-install-recommends && rm -rf /var/lib/apt/lists/*)
+# Install Playwright browsers
+RUN playwright install chromium
 
 # Copy the rest of the application
 COPY . .
@@ -70,8 +70,6 @@ USER appuser
 
 # Start application
 CMD ["python", "app/entrypoint.py"]
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/ms-playwright/chromium/chromium-linux/chrome
 
 # Expose ports
 EXPOSE 8000 9222

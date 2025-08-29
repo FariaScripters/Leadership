@@ -1,14 +1,19 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import asyncio
 import json
 import logging
 import aiohttp
 from app.core.config import get_settings
+from .cdp.domains.page import PageDomain
+from .cdp.domains.network import NetworkDomain
+from .cdp.domains.runtime import RuntimeDomain
+from .cdp.domains.dom import DOMDomain
+from .cdp.session import CDPSession
 
 logger = logging.getLogger(__name__)
 
 class CDPConnectionManager:
-    """Chrome DevTools Protocol connection manager"""
+    """Chrome DevTools Protocol connection manager with domain support"""
     
     def __init__(self):
         self.settings = get_settings()
@@ -17,6 +22,15 @@ class CDPConnectionManager:
         self._message_id = 0
         self._callbacks: Dict[int, asyncio.Future] = {}
         self._event_handlers: Dict[str, callable] = {}
+        
+        # Initialize domains
+        self.page = PageDomain(self)
+        self.network = NetworkDomain(self)
+        self.runtime = RuntimeDomain(self)
+        self.dom = DOMDomain(self)
+        
+        # Store active sessions
+        self._sessions: Dict[str, 'CDPSession'] = {}
         
     @property
     def message_id(self) -> int:
@@ -41,9 +55,17 @@ class CDPConnectionManager:
             asyncio.create_task(self._handle_messages())
             
             # Enable necessary domains
-            await self.send_command("Network.enable")
-            await self.send_command("Page.enable")
-            await self.send_command("Runtime.enable")
+            await self.network.enable()
+            await self.page.enable()
+            await self.runtime.enable()
+            await self.dom.enable()
+            
+            # Enable target tracking
+            await self.send_command("Target.setDiscoverTargets", {"discover": True})
+            
+            # Set up target attached/detached handlers
+            self.on_event("Target.targetCreated", self._handle_target_created)
+            self.on_event("Target.targetDestroyed", self._handle_target_destroyed)
             
             logger.info("Connected to Chrome DevTools Protocol")
             return True
@@ -55,6 +77,14 @@ class CDPConnectionManager:
             
     async def disconnect(self):
         """Disconnect from Chrome DevTools Protocol"""
+        # Detach from all targets
+        for session in self._sessions.values():
+            try:
+                await session.detach()
+            except:
+                pass
+        self._sessions.clear()
+        
         if self.ws:
             await self.ws.close()
             self.ws = None
@@ -68,6 +98,63 @@ class CDPConnectionManager:
             if not future.done():
                 future.cancel()
         self._callbacks.clear()
+        
+    async def _handle_target_created(self, params: Dict[str, Any]):
+        """Handle new target creation"""
+        target_info = params["targetInfo"]
+        
+        # Attach to target
+        response = await self.send_command(
+            "Target.attachToTarget",
+            {"targetId": target_info["targetId"], "flatten": True}
+        )
+        
+        session_id = response["sessionId"]
+        session = CDPSession(self, target_info["targetId"], session_id)
+        self._sessions[session_id] = session
+        
+        logger.info(f"Attached to target: {target_info['url']} ({session_id})")
+        
+    async def _handle_target_destroyed(self, params: Dict[str, Any]):
+        """Handle target destruction"""
+        target_id = params["targetId"]
+        sessions_to_remove = [
+            session_id for session_id, session in self._sessions.items()
+            if session.target_id == target_id
+        ]
+        
+        for session_id in sessions_to_remove:
+            session = self._sessions.pop(session_id)
+            try:
+                await session.detach()
+            except:
+                pass
+                
+        logger.info(f"Target destroyed: {target_id}")
+        
+    async def create_target(self, url: str = "about:blank") -> CDPSession:
+        """Create new target
+        
+        Args:
+            url: Initial URL
+            
+        Returns:
+            CDP session for new target
+        """
+        response = await self.send_command("Target.createTarget", {"url": url})
+        target_id = response["targetId"]
+        
+        # Wait for session to be created
+        for _ in range(100):  # Wait up to 10 seconds
+            session = next(
+                (s for s in self._sessions.values() if s.target_id == target_id),
+                None
+            )
+            if session:
+                return session
+            await asyncio.sleep(0.1)
+            
+        raise Exception("Failed to create target session")
         
     async def send_command(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Send command to Chrome DevTools Protocol

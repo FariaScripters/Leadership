@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # Gemini settings
     gemini_api_key: str = "AIzaSyDJsHS0Viv9IUEW5vOO2bvgpe6AZCblXHQ"
     
+    # Browser CDP settings
+    chrome_remote_debugging_port: int = 9222
+    chrome_ws_endpoint: str = "ws://localhost:9222"
+    
     # MCP server settings
     mcp_servers: Dict[str, Dict[str, Any]] = {
         "sequentialthinking": {
@@ -54,6 +58,29 @@ class Settings(BaseSettings):
                 "-v",
                 "/local-directory:/local-directory",
                 "ghcr.io/jpicklyk/task-orchestrator"
+            ]
+        },
+        "puppeteer": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "DOCKER_CONTAINER",
+                "mcp/puppeteer"
+            ],
+            "env": {
+                "DOCKER_CONTAINER": "true"
+            }
+        },
+        "playwright": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "mcp/playwright"
             ]
         }
     }

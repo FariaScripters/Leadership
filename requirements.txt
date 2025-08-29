@@ -12,3 +12,5 @@ uvicorn[standard]
 beanie
 motor
 redis
+pytest
+pytest-asyncio

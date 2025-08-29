@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class Settings(BaseSettings):
     # Database settings
@@ -11,6 +11,52 @@ class Settings(BaseSettings):
     
     # Gemini settings
     gemini_api_key: str = "AIzaSyDJsHS0Viv9IUEW5vOO2bvgpe6AZCblXHQ"
+    
+    # MCP server settings
+    mcp_servers: Dict[str, Dict[str, Any]] = {
+        "sequentialthinking": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "mcp/sequentialthinking"
+            ]
+        },
+        "memory": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-v",
+                "/local-directory:/local-directory",
+                "mcp/memory"
+            ]
+        },
+        "playwright-mcp": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-v",
+                "/local-directory:/local-directory",
+                "mcp/mcp-playwright"
+            ]
+        },
+        "task-orchestrator": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-v",
+                "/local-directory:/local-directory",
+                "ghcr.io/jpicklyk/task-orchestrator"
+            ]
+        }
+    }
     
     class Config:
         env_prefix = ""

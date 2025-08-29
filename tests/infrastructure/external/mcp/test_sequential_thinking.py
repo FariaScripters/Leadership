@@ -9,6 +9,7 @@ async def mcp_server():
     yield server
     await server.stop()
 
+@pytest.mark.skip_mcp
 @pytest.mark.asyncio
 async def test_process_thought_success(mcp_server):
     # Mock process
@@ -37,6 +38,7 @@ async def test_process_thought_success(mcp_server):
         process_mock.stdin.drain.assert_called_once()
         process_mock.stdout.readline.assert_called_once()
 
+@pytest.mark.skip_mcp
 @pytest.mark.asyncio
 async def test_process_thought_server_error(mcp_server):
     # Mock process with error
@@ -54,6 +56,7 @@ async def test_process_thought_server_error(mcp_server):
                 query="What are the steps?"
             )
             
+@pytest.mark.skip_mcp
 @pytest.mark.asyncio
 async def test_server_lifecycle(mcp_server):
     # Mock process

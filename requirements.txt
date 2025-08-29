@@ -1,0 +1,14 @@
+playwright
+markdownify
+httpx
+docker
+async_lru
+google-cloud-aiplatform
+google-generativeai>=0.3.0
+pydantic
+pydantic-settings
+fastapi
+uvicorn[standard]
+beanie
+motor
+redis

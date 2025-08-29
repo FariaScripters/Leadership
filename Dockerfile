@@ -43,16 +43,30 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && playwright install \
-    && playwright install-deps
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright browsers and dependencies
+RUN playwright install chromium && \
+    playwright install-deps chromium || \
+    (apt-get update && apt-get install -y \
+    fonts-unifont \
+    fonts-liberation2 \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-tlwg-loma-otf \
+    fonts-freefont-ttf \
+    --no-install-recommends && rm -rf /var/lib/apt/lists/*)
 
 # Copy the rest of the application
 COPY . .
 
+# Start script to run both Chrome and FastAPI
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create a non-root user
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app /entrypoint.sh
 
 # Switch to non-root user
 USER appuser
@@ -66,9 +80,5 @@ ENV CHROME_BIN=/usr/bin/google-chrome \
 
 # Expose ports
 EXPOSE 8000 9222
-
-# Start script to run both Chrome and FastAPI
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

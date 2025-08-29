@@ -1,0 +1,16 @@
+{
+  "name": "expressapi",
+  "version": "1.0.0",
+  "description": "Node Express App to send logs and metrics to Datadog Agent",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "dd-trace": "^2.x",
+    "express": "^4.x",
+    "hot-shots": "^9.x",
+    "winston": "^3.x",
+    "winston-syslog": "^2.x"
+  }
+}

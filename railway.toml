@@ -1,0 +1,20 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pip install -r requirements.txt"
+watchPatterns = ["app/**", "requirements.txt", "*.py"]
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[environments.production]
+deploy.startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+
+[environments.staging]
+deploy.startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
+
+[environments.pr]
+deploy.startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"

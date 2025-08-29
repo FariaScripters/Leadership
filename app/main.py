@@ -1,83 +1,77 @@
-from fastapi import FastAPI
+"""
+Main FastAPI application for Leadership Assistant with OpenRouter integration.
+"""
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import logging
-import asyncio
+import os
+from dotenv import load_dotenv
 
-from app.core.config import get_settings
-from app.infrastructure.storage.mongodb import get_mongodb
-from app.infrastructure.storage.redis import get_redis
-from app.interfaces.dependencies import get_agent_service
-from app.interfaces.api.routes import router
-from app.infrastructure.logging import setup_logging
-from app.interfaces.errors.exception_handlers import register_exception_handlers
-from app.infrastructure.models.documents import AgentDocument, SessionDocument, UserDocument
-from app.interfaces.middleware.auth import AuthMiddleware
-from beanie import init_beanie
+# Load environment variables
+load_dotenv()
 
-# Initialize logging system
-setup_logging()
-logger = logging.getLogger(__name__)
+# Import OpenRouter LLM
+from app.infrastructure.external.llm.llm_factory import LLMFactory
 
-# Load configuration
-settings = get_settings()
-
-
-# Create lifespan context manager
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Code executed on startup
-    logger.info("Application startup - Manus AI Agent initializing")
-    
-    # Initialize MongoDB and Beanie
-    await get_mongodb().initialize()
-
-    # Initialize Beanie
-    await init_beanie(
-        database=get_mongodb().client[settings.mongodb_database],
-        document_models=[AgentDocument, SessionDocument, UserDocument]
-    )
-    logger.info("Successfully initialized Beanie")
-    
-    # Initialize Redis
-    await get_redis().initialize()
-    
-    try:
-        yield
-    finally:
-        # Code executed on shutdown
-        logger.info("Application shutdown - Manus AI Agent terminating")
-        # Disconnect from MongoDB
-        await get_mongodb().shutdown()
-        # Disconnect from Redis
-        await get_redis().shutdown()
-
-
-        logger.info("Cleaning up AgentService instance")
-        try:
-            await asyncio.wait_for(get_agent_service().shutdown(), timeout=30.0)
-            logger.info("AgentService shutdown completed successfully")
-        except asyncio.TimeoutError:
-            logger.warning("AgentService shutdown timed out after 30 seconds")
-        except Exception as e:
-            logger.error(f"Error during AgentService cleanup: {str(e)}")
-
-app = FastAPI(title="Manus AI Agent", lifespan=lifespan)
+# Create FastAPI app
+app = FastAPI(
+    title="Leadership Assistant API",
+    description="AI-powered leadership coaching with OpenRouter integration",
+    version="1.0.0"
+)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add authentication middleware
-app.add_middleware(AuthMiddleware)
+# Initialize LLM factory
+llm_factory = LLMFactory()
 
-# Register exception handlers
-register_exception_handlers(app)
+@app.get("/")
+async def root():
+    """Root endpoint with API information."""
+    return {
+        "message": "Leadership Assistant API",
+        "version": "1.0.0",
+        "llm_provider": "OpenRouter",
+        "status": "active"
+    }
 
-# Register routes
-app.include_router(router, prefix="/api/v1")
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway monitoring."""
+    try:
+        # Test OpenRouter connection
+        llm = llm_factory.create_llm()
+        return {
+            "status": "healthy",
+            "llm_provider": "OpenRouter",
+            "default_model": os.getenv("OPENROUTER_DEFAULT_MODEL", "google/gemini-flash-1.5-8b")
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service unhealthy: {str(e)}"
+        )
+
+@app.post("/api/chat")
+async def chat_endpoint(message: dict):
+    """Basic chat endpoint for testing."""
+    try:
+        llm = llm_factory.create_llm()
+        response = await llm.generate_async(
+            prompt=message.get("message", "Hello"),
+            system_prompt="You are a helpful leadership coach."
+        )
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

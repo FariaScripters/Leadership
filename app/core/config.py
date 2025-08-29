@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class Settings(BaseSettings):
     # Database settings
@@ -11,6 +11,17 @@ class Settings(BaseSettings):
     
     # Gemini settings
     gemini_api_key: str = "AIzaSyDJsHS0Viv9IUEW5vOO2bvgpe6AZCblXHQ"
+    
+    # OpenRouter settings
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_default_model: str = "google/gemini-flash-1.5-8b"
+    openrouter_fallback_models: List[str] = [
+        "google/gemini-flash-1.5-8b",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "mistralai/mistral-7b-instruct:free",
+        "microsoft/phi-3-medium-128k-instruct:free"
+    ]
     
     # Browser CDP settings
     chrome_remote_debugging_port: int = 9222

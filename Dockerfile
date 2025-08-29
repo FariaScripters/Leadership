@@ -31,9 +31,6 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
-    && wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and set working directory
@@ -73,10 +70,8 @@ USER appuser
 
 # Start application
 CMD ["python", "app/entrypoint.py"]
-ENV CHROME_BIN=/usr/bin/google-chrome \
-    CHROME_PATH=/usr/lib/chromium/ \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/ms-playwright/chromium/chromium-linux/chrome
 
 # Expose ports
 EXPOSE 8000 9222
